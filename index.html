@@ -1,1 +1,442 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Station Monitor Kiosk</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --border: #252a36;
+    --text: #c8cfe0;
+    --text-dim: #556078;
+    --off-bg: #151820;
+    --off-border: #252a36;
+    --off-text: #3a4155;
+    --green-bg: #0a2218;
+    --green-border: #1a7a42;
+    --green-text: #2dde78;
+    --green-glow: rgba(45, 222, 120, 0.18);
+    --yellow-bg: #1c1700;
+    --yellow-border: #a07800;
+    --yellow-text: #ffc107;
+    --yellow-glow: rgba(255, 193, 7, 0.18);
+    --red-bg: #210d0d;
+    --red-border: #8c1f1f;
+    --red-text: #ff4d4d;
+    --red-glow: rgba(255, 77, 77, 0.18);
+    --accent: #2dde78;
+  }
 
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 3rem;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+  }
+
+  header {
+    width: 100%;
+    max-width: 780px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--accent); }
+
+  .conn-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.4s;
+  }
+  .dot.ok  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .dot.err { background: var(--red-text); }
+
+  h1 {
+    font-size: 28px; font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: center;
+    color: #e8edf8;
+    margin-bottom: 0.25rem;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.25rem;
+  }
+
+  .legend {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-bottom: 2rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-dot  { width: 10px; height: 10px; border-radius: 50%; }
+  .legend-dot.g { background: var(--green-text);  box-shadow: 0 0 5px var(--green-glow); }
+  .legend-dot.y { background: var(--yellow-text); box-shadow: 0 0 5px var(--yellow-glow); }
+  .legend-dot.r { background: var(--red-text);    box-shadow: 0 0 5px var(--red-glow); }
+  .legend-item.g { color: var(--green-text); }
+  .legend-item.y { color: var(--yellow-text); }
+  .legend-item.r { color: var(--red-text); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    width: 100%;
+    max-width: 780px;
+    margin-bottom: 2.5rem;
+  }
+
+  .box {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    border: 1.5px solid var(--off-border);
+    background: var(--off-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.4s, border-color 0.4s, box-shadow 0.4s;
+    position: relative;
+    overflow: hidden;
+  }
+  .box::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 9px;
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+
+  .box.green {
+    background: var(--green-bg);
+    border-color: var(--green-border);
+    box-shadow: 0 0 24px var(--green-glow), inset 0 0 20px rgba(45,222,120,0.05);
+  }
+  .box.green::before {
+    background: radial-gradient(ellipse at 50% 0%, rgba(45,222,120,0.12), transparent 70%);
+    opacity: 1;
+  }
+  .box.green .box-num   { color: var(--green-text); }
+  .box.green .box-timer { color: rgba(45,222,120,0.6); }
+  .box.green .box-state { color: rgba(45,222,120,0.5); }
+
+  .box.yellow {
+    background: var(--yellow-bg);
+    border-color: var(--yellow-border);
+    box-shadow: 0 0 24px var(--yellow-glow), inset 0 0 20px rgba(255,193,7,0.05);
+  }
+  .box.yellow::before {
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,193,7,0.12), transparent 70%);
+    opacity: 1;
+  }
+  .box.yellow .box-num   { color: var(--yellow-text); }
+  .box.yellow .box-timer { color: rgba(255,193,7,0.6); }
+  .box.yellow .box-state { color: rgba(255,193,7,0.5); }
+
+  .box.red {
+    background: var(--red-bg);
+    border-color: var(--red-border);
+    box-shadow: 0 0 24px var(--red-glow), inset 0 0 20px rgba(255,77,77,0.05);
+  }
+  .box.red::before {
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,77,77,0.12), transparent 70%);
+    opacity: 1;
+  }
+  .box.red .box-num   { color: var(--red-text); }
+  .box.red .box-timer { color: rgba(255,77,77,0.5); }
+  .box.red .box-state { color: rgba(255,77,77,0.45); }
+
+  .box-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 32px;
+    color: var(--off-text);
+    transition: color 0.4s;
+    line-height: 1;
+  }
+  .box-timer {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: transparent;
+    transition: color 0.4s;
+    letter-spacing: 0.05em;
+    min-height: 14px;
+  }
+  .box-state {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: transparent;
+    transition: color 0.4s;
+    font-weight: 600;
+    min-height: 12px;
+  }
+
+  .controls-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    text-align: center;
+    margin-bottom: 0.75rem;
+    max-width: 780px;
+    width: 100%;
+  }
+
+  .btn-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 780px;
+  }
+
+  .btn {
+    padding: 12px 0;
+    border-radius: 8px;
+    border: 1.5px solid var(--off-border);
+    background: var(--off-bg);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s, box-shadow 0.15s;
+  }
+  .btn:hover { border-color: #3a4155; color: var(--text); background: #1c2030; }
+  .btn:active { transform: scale(0.95); }
+  .btn.active-green  { background: #0a2218; border-color: var(--green-border);  color: var(--green-text);  box-shadow: 0 0 10px var(--green-glow); }
+  .btn.active-yellow { background: #1c1700; border-color: var(--yellow-border); color: var(--yellow-text); box-shadow: 0 0 10px var(--yellow-glow); }
+  .btn.active-red    { background: #210d0d; border-color: var(--red-border);    color: var(--red-text);    box-shadow: 0 0 10px var(--red-glow); }
+
+  @media (max-width: 520px) {
+    .grid { grid-template-columns: repeat(3, 1fr); }
+    .btn-grid { grid-template-columns: repeat(4, 1fr); }
+    .box-num { font-size: 26px; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  .box.red .box-num { animation: pulse 1.2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Station <span>Monitor</span></div>
+  <div class="conn-status">
+    <div class="dot" id="dot"></div>
+    <span id="statusTxt">connecting...</span>
+  </div>
+</header>
+
+<h1>Station Monitor</h1>
+<div class="subtitle">// real-time andon kiosk //</div>
+
+<div class="legend">
+  <div class="legend-item g"><div class="legend-dot g"></div>0–2 min</div>
+  <div class="legend-item y"><div class="legend-dot y"></div>2–5 min</div>
+  <div class="legend-item r"><div class="legend-dot r"></div>5+ min</div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="controls-label">— press to activate · press again to clear —</div>
+<div class="btn-grid" id="btnGrid"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAWFoG85ouP63ZEvjz9FW3XYd5Ch1Lhf8E",
+  authDomain: "line-numbers-1380f.firebaseapp.com",
+  databaseURL: "https://line-numbers-1380f-default-rtdb.firebaseio.com",
+  projectId: "line-numbers-1380f",
+  storageBucket: "line-numbers-1380f.firebasestorage.app",
+  messagingSenderId: "733919913848",
+  appId: "1:733919913848:web:4886bc0db2e1138179ca8d"
+};
+
+const GREEN_MS  = 2 * 60 * 1000;
+const YELLOW_MS = 5 * 60 * 1000;
+
+const state = {};
+const tickTimers = {};
+let ref;
+
+function getStage(activatedAt) {
+  const elapsed = Date.now() - activatedAt;
+  if (elapsed < GREEN_MS)  return 'green';
+  if (elapsed < YELLOW_MS) return 'yellow';
+  return 'red';
+}
+
+function formatElapsed(activatedAt) {
+  const elapsed = Math.floor((Date.now() - activatedAt) / 1000);
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const ss = String(elapsed % 60).padStart(2, '0');
+  return mm + ':' + ss;
+}
+
+function stageLabel(stage) {
+  if (stage === 'green')  return 'waiting';
+  if (stage === 'yellow') return 'delayed';
+  return 'urgent';
+}
+
+function renderBox(i) {
+  const s    = state[i] || { on: false, activatedAt: 0 };
+  const box  = document.getElementById('box' + i);
+  const btn  = document.getElementById('btn' + i);
+  const tmr  = document.getElementById('tmr' + i);
+  const stEl = document.getElementById('state' + i);
+
+  if (!s.on) {
+    box.className    = 'box';
+    btn.className    = 'btn';
+    tmr.textContent  = '';
+    stEl.textContent = '';
+    return;
+  }
+
+  const stage      = getStage(s.activatedAt);
+  box.className    = 'box ' + stage;
+  btn.className    = 'btn active-' + stage;
+  tmr.textContent  = formatElapsed(s.activatedAt);
+  stEl.textContent = stageLabel(stage);
+}
+
+function startTick(i) {
+  clearInterval(tickTimers[i]);
+  tickTimers[i] = setInterval(() => renderBox(i), 500);
+}
+
+function stopTick(i) {
+  clearInterval(tickTimers[i]);
+}
+
+function applyState(i, s) {
+  state[i] = s;
+  if (s && s.on) {
+    startTick(i);
+  } else {
+    stopTick(i);
+    renderBox(i);
+  }
+}
+
+function toggleBox(i) {
+  const s = state[i] || { on: false };
+  if (s.on) {
+    writeBox(i, { on: false, activatedAt: 0 });
+  } else {
+    writeBox(i, { on: true, activatedAt: Date.now() });
+  }
+}
+
+function writeBox(i, val) {
+  if (ref && ref.child) {
+    ref.child(String(i)).set(val);
+  } else {
+    applyState(i, val);
+  }
+}
+
+function setStatus(ok, msg) {
+  document.getElementById('dot').className         = 'dot ' + (ok ? 'ok' : 'err');
+  document.getElementById('statusTxt').textContent = msg;
+}
+
+function buildUI() {
+  const grid    = document.getElementById('grid');
+  const btnGrid = document.getElementById('btnGrid');
+  for (let i = 1; i <= 12; i++) {
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.id = 'box' + i;
+    box.innerHTML = `
+      <div class="box-num">${i}</div>
+      <div class="box-timer" id="tmr${i}"></div>
+      <div class="box-state" id="state${i}"></div>
+    `;
+    grid.appendChild(box);
+
+    const btn = document.createElement('button');
+    btn.className   = 'btn';
+    btn.id          = 'btn' + i;
+    btn.textContent = i;
+    btn.onclick     = () => toggleBox(i);
+    btnGrid.appendChild(btn);
+  }
+}
+
+buildUI();
+for (let i = 1; i <= 12; i++) state[i] = { on: false, activatedAt: 0 };
+
+try {
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  ref = db.ref('kiosk/boxes');
+
+  ref.on('value', snap => {
+    const data = snap.val() || {};
+    setStatus(true, 'live sync active');
+    for (let i = 1; i <= 12; i++) {
+      applyState(i, data[i] || { on: false, activatedAt: 0 });
+    }
+  }, err => {
+    setStatus(false, 'sync error — local mode');
+    ref = null;
+  });
+} catch(e) {
+  setStatus(false, 'local mode');
+  ref = null;
+}
+</script>
+</body>
+</html>
